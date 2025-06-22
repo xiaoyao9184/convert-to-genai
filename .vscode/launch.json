@@ -1,0 +1,42 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "gradio: run app",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/gradio/run.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "${workspaceFolder}/gradio/app.py"
+            ],
+            "env": {
+                "SPACE_AUTHOR_NAME": "xiaoyao9184",
+                "LD_LIBRARY_PATH": "$CONDA_PREFIX/lib:$LD_LIBRARY_PATH",
+                "LD_PRELOAD": "$CONDA_PREFIX/lib/libstdc++.so.6",
+                "HUGGINGFACE_HUB_CACHE": "$HOME/.cache/huggingface/hub",
+                "OUTPUT_DIR": "$HOME/.genai-build/models/",
+                "IGNORE_CONVERTED": "true"
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "onnxruntime_genai: build cpu-int4-rtn-block-32",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "onnxruntime_genai.models.builder",
+            "console": "integratedTerminal",
+            "args": [
+                "-m", "Qwen/Qwen2.5-0.5B-Instruct",
+                "-o", "${workspaceFolder}/models/Qwen2.5-0.5B-Instruct/cpu_and_mobile/cpu-int4-rtn-block-32",
+                "-p", "int4",
+                "-e", "cpu",
+                "-c", "$HOME/.cache/huggingface/hub",
+                "--extra_options", "hf_token=false", "filename=Qwen2.5-0.5B-Instruct-cpu-int4-rtn-block-32.onnx",
+                    "int4_algo_config=rtn", "int4_block_size=32", "int4_block_size=32"
+            ],
+            "justMyCode": false
+        }
+    ]
+}
