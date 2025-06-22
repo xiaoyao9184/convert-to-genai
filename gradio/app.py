@@ -109,14 +109,21 @@ class Config:
         cache_dir = os.getenv("HUGGINGFACE_HUB_CACHE") or os.getenv("CACHE_DIR") or "./cache"
         log_dir = os.getenv("LOG_DIR") or "./logs"
 
+        output_path = Path(output_dir)
+        output_path.mkdir(exist_ok=True)
+        cache_path = Path(cache_dir)
+        cache_path.mkdir(exist_ok=True)
+        log_path = Path(log_dir)
+        log_path.mkdir(exist_ok=True)
+
         return cls(
             hf_token=system_token,
             hf_username=hf_username,
             is_using_user_token=False,
             ignore_converted=os.getenv("IGNORE_CONVERTED", "false") == "true",
-            output_path=Path(output_dir),
-            cache_path=Path(cache_dir),
-            log_path=Path(log_dir)
+            output_path=output_path,
+            cache_path=cache_path,
+            log_path=log_path
         )
 
     @property
