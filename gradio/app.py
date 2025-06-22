@@ -332,7 +332,7 @@ class ModelConverter:
                 path_or_fileobj=readme_path,
                 path_in_repo="README.md"
             )
-            yield f"🪪 Model card [README.md]({hf_model_url}/README.md)"
+            yield f"🪪 Model card [README.md]({hf_model_url}/blob/main/README.md)"
 
             for execution_provider in (progress_provider := tqdm(EXECUTION_PROVIDERS, disable=False)):
                 ep = ExecutionProvider(execution_provider)
@@ -570,7 +570,7 @@ with gr.Blocks() as demo:
         except StopIteration as e:
             output_model_url = f"{user_config.hf_base_url}/{output_model_id}"
             yield gr.update(interactive=True), \
-                holder.add(f"📤 Upload successful✅! 📦 Go to [{output_model_id}]({output_model_url})").markdown()
+                holder.add(f"📤 Upload successful✅! 📦 Go to [{output_model_id}]({output_model_url}/tree/main)").markdown()
         except Exception as e:
             logger.exception(e)
             yield gr.update(interactive=True), holder.add("📤 Upload failed🚫").markdown()
