@@ -17,7 +17,8 @@
                 // "LD_PRELOAD": "${env:CONDA_ROOT}/lib/libstdc++.so.6",
                 "HUGGINGFACE_HUB_CACHE": "${env:HOME}/.cache/huggingface/hub",
                 "OUTPUT_DIR": "${env:HOME}/.genai-build/models/",
-                "IGNORE_CONVERTED": "true"
+                "IGNORE_CONVERTED": "true",
+                "IGNORE_ERRORS": "true"
             },
             "justMyCode": false
         },
