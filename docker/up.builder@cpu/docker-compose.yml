@@ -1,0 +1,31 @@
+
+
+services:
+  convert-to-genai-builder:
+    image: xiaoyao9184/convert-to-genai:main
+    command:
+      - python3
+      - -m
+      - onnxruntime_genai.models.builder
+      - -m
+      - google/gemma-3-1b-it
+      - -o
+      - /root/.genai-build/models/google/gemma-3-1b-it-genai
+      - -p
+      - int4
+      - -e
+      - cpu
+      - -c
+      - /root/.cache
+    environment:
+      - HF_ENDPOINT=http://host.docker.internal:8090
+      # - HF_TOKEN=
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # - ./../../cache:/root/.cache
+      # - ./../../models:/root/.genai-build/models
+      # - ./../../logs:/root/.genai-build/logs
+      - $HOME/.cache:/root/.cache
+      - $HOME/.genai-build/models:/root/.genai-build/models
+      - $HOME/.genai-build/logs:/root/.genai-build/logs

@@ -3,8 +3,12 @@
 services:
   convert-to-genai-gradio:
     image: xiaoyao9184/convert-to-genai:main
+    command: python3 /workspace/gradio/app.py
     environment:
+      - HF_ENDPOINT=http://host.docker.internal:8090
       - SPACE_AUTHOR_NAME=xiaoyao9184
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "7860:7860"
     volumes:

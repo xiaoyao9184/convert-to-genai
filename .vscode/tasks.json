@@ -2,10 +2,18 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "docker: compose up@cpu",
+            "label": "docker: compose up.builder@cpu",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/docker/up@cpu/"
+                "cwd": "${workspaceFolder}/docker/up.builder@cpu/"
+            },
+            "command": "docker compose -p convert-to-genai up"
+        },
+        {
+            "label": "docker: compose up.gradio@cpu",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/docker/up.gradio@cpu/"
             },
             "command": "docker compose -p convert-to-genai up"
         },
