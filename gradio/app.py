@@ -33,47 +33,6 @@ class Precision(Enum):
     FP16 = "fp16"
     FP32 = "fp32"
 
-EXECUTION_PROVIDERS = tuple(x.value for x in ExecutionProvider)
-
-PRECISION_MODES = tuple(x.value for x in Precision)
-
-EXECUTION_PROVIDER_PATH_MAPPING = {
-    ExecutionProvider.CPU: "cpu_and_mobile",
-    ExecutionProvider.CUDA: "cuda",
-    ExecutionProvider.DML: "directml"
-}
-
-NAME_EXTRA_OPTIONS_MAPPING = {
-    (ExecutionProvider.CPU,Precision.INT4): {
-        "rtn-block-32": {
-            "int4_algo_config": "rtn",
-            "int4_block_size": 32
-        },
-        "rtn-block-32-acc-level-4": {
-            "int4_algo_config": "rtn",
-            "int4_block_size": 32,
-            "int4_accuracy_level": 4
-        }
-    },
-
-    (ExecutionProvider.CUDA,Precision.FP16): {
-        "": {},
-    },
-    (ExecutionProvider.CUDA,Precision.INT4): {
-        "rtn-block-32": {
-            "int4_algo_config": "rtn",
-            "int4_block_size": 32
-        },
-    },
-
-    (ExecutionProvider.DML,Precision.INT4): {
-        "awq-block-128": {
-            "int4_algo_config": "awq",
-            "int4_block_size": 128
-        },
-    }
-}
-
 @dataclass
 class Config:
     """Application configuration."""
@@ -86,6 +45,7 @@ class Config:
     hf_username: str
     is_using_user_token: bool
     ignore_converted: bool = False
+    ignore_errors: bool = False
 
     hf_base_url: str = "https://huggingface.co"
     output_path: Path = Path("./models")
@@ -110,17 +70,18 @@ class Config:
         log_dir = os.getenv("LOG_DIR") or "./logs"
 
         output_path = Path(output_dir)
-        output_path.mkdir(exist_ok=True)
+        output_path.mkdir(parents=True, exist_ok=True)
         cache_path = Path(cache_dir)
-        cache_path.mkdir(exist_ok=True)
+        cache_path.mkdir(parents=True, exist_ok=True)
         log_path = Path(log_dir)
-        log_path.mkdir(exist_ok=True)
+        log_path.mkdir(parents=True, exist_ok=True)
 
         return cls(
             hf_token=system_token,
             hf_username=hf_username,
             is_using_user_token=False,
             ignore_converted=os.getenv("IGNORE_CONVERTED", "false") == "true",
+            ignore_errors=os.getenv("IGNORE_ERRORS", "false") == "true",
             output_path=output_path,
             cache_path=cache_path,
             log_path=log_path
@@ -142,6 +103,7 @@ class Config:
                 handler = logging.FileHandler(self.logger_path)
                 handler.setFormatter(logging.Formatter("[%(levelname)s] - %(message)s"))
                 logger.addHandler(handler)
+                logger.propagate = False
             self._logger = logger
         return self._logger
 
@@ -150,7 +112,6 @@ class Config:
         """Get logger path."""
         if not self._logger_path:
             logger_path = self.log_path / f"{self.id}.log"
-            logger_path.parent.mkdir(exist_ok=True)
             self._logger_path = logger_path
         return self._logger_path
 
@@ -216,6 +177,25 @@ class ProgressLogger:
         if self.write_count > 60:
             self.write_count = 0
             write(text)
+
+class RedirectHandler(logging.Handler):
+    """Handles logging redirection to progress logger."""
+
+    def __init__(self, context: contextvars.ContextVar = None, logger: logging.Logger = None):
+        super().__init__(logging.NOTSET)
+        self.context = context
+        self.logger = logger
+
+    def emit(self, record: logging.LogRecord):
+        progress_logger = self.context.get(None)
+
+        if progress_logger:
+            try:
+                progress_logger.logger.handle(record)
+            except Exception as e:
+                self.logger.debug(f"Failed to redirection log: {e}")
+        elif self.logger:
+            self.logger.handle(record)
 
 class ModelConverter:
     """Handles model conversion and upload operations."""
@@ -308,7 +288,10 @@ class ModelConverter:
                                 "🔁 Conversion": "❌"
                             }
                         }
-                        raise e
+                        if self.config.ignore_errors:
+                            yield f"🆘 `{task_name}` Conversion failed: {e}"
+                        else:
+                            raise e
         return output_dir
 
     def upload_model(
@@ -378,10 +361,11 @@ class ModelConverter:
                                     "📤 Upload": "❌"
                                 }
                             }
-                            raise e
+                            if self.config.ignore_errors:
+                                yield f"🆘 `{task_name}` Upload Error: {e}"
+                            else:
+                                raise e
             return hf_model_url
-        except Exception as e:
-            raise e
         finally:
             shutil.rmtree(model_folder_path, ignore_errors=True)
 
@@ -447,35 +431,92 @@ class MessageHolder:
 
         return "\n".join(lines)
 
-class RedirectHandler(logging.Handler):
-    """Handles logging redirection to progress logger."""
-
-    def __init__(self, context: contextvars.ContextVar = None):
-        super().__init__(logging.NOTSET)
-        self.context = context
-
-    def emit(self, record: logging.LogRecord):
-        progress_logger = self.context.get(None)
-
-        if progress_logger:
-            try:
-                progress_logger.logger.handle(record)
-            except Exception as e:
-                logging.getLogger(__name__).debug(f"Failed to forward log: {e}")
-        else:
-            logging.getLogger(__name__).handle(record)
 
 if __name__ == "__main__":
+    # default config
+    config = Config.from_env()
+
     # context progress logger
     progress_logger_ctx = contextvars.ContextVar("progress_logger", default=None)
 
-    # default config log_path
-    config = Config.from_env()
-    log_path = config.log_path / 'ui.log'
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    logger.addHandler(logging.FileHandler(log_path))
-    logger.info("Gradio UI started")
+    # redirect builtins.print to context progress logger
+    def context_aware_print(*args, **kwargs):
+        progress_logger = progress_logger_ctx.get(None)
+        if progress_logger:
+            progress_logger.print(*args, **kwargs)
+        else:
+            builtins._original_print(*args, **kwargs)
+    builtins._original_print = builtins.print
+    builtins.print = context_aware_print
+
+    # redirect sys.stdout.write to context progress logger
+    def context_aware_write(text):
+        progress_logger = progress_logger_ctx.get(None)
+        if progress_logger:
+            progress_logger.write(text.rstrip(), sys.stdout._original_write)
+        else:
+            sys.stdout._original_write(text)
+    sys.stdout._original_write = sys.stdout.write
+    sys.stdout.write = context_aware_write
+
+    # setup logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(logging.FileHandler(config.log_path / 'ui.log'))
+
+    # redirect root logger to context progress logger
+    root_handler = RedirectHandler(progress_logger_ctx)
+    root_logger.addHandler(root_handler)
+    root_logger.info("Gradio UI started")
+
+    # redirect package logger to context progress logger
+    pkg_handler = RedirectHandler(progress_logger_ctx, logging.getLogger(__name__))
+    for logger in [logging.getLogger("onnxruntime"), logging.getLogger("huggingface_hub.hf_api")]:
+        logger.handlers.clear()
+        logger.addHandler(pkg_handler)
+        logger.setLevel(logger.level)
+        logger.propagate = False
+
+EXECUTION_PROVIDERS = tuple(x.value for x in ExecutionProvider)
+
+PRECISION_MODES = tuple(x.value for x in Precision)
+
+EXECUTION_PROVIDER_PATH_MAPPING = {
+    ExecutionProvider.CPU: "cpu_and_mobile",
+    ExecutionProvider.CUDA: "cuda",
+    ExecutionProvider.DML: "directml"
+}
+
+NAME_EXTRA_OPTIONS_MAPPING = {
+    (ExecutionProvider.CPU,Precision.INT4): {
+        "rtn-block-32": {
+            "int4_algo_config": "rtn",
+            "int4_block_size": 32
+        },
+        "rtn-block-32-acc-level-4": {
+            "int4_algo_config": "rtn",
+            "int4_block_size": 32,
+            "int4_accuracy_level": 4
+        }
+    },
+
+    (ExecutionProvider.CUDA,Precision.FP16): {
+        "": {},
+    },
+    (ExecutionProvider.CUDA,Precision.INT4): {
+        "rtn-block-32": {
+            "int4_algo_config": "rtn",
+            "int4_block_size": 32
+        },
+    },
+
+    (ExecutionProvider.DML,Precision.INT4): {
+        "awq-block-128": {
+            "int4_algo_config": "awq",
+            "int4_block_size": 128
+        },
+    }
+}
 
 with gr.Blocks() as demo:
     gr_user_config = gr.State(config)
@@ -511,69 +552,74 @@ with gr.Blocks() as demo:
     )
 
     def click_proceed(input_model_id, same_repo, user_config, progress=gr.Progress(track_tqdm=True)):
-        converter = ModelConverter(user_config, progress_logger_ctx)
-        holder = MessageHolder()
+        try:
+            converter = ModelConverter(user_config, progress_logger_ctx)
+            holder = MessageHolder()
 
-        input_model_id = input_model_id.strip()
-        model_name = input_model_id.split("/")[-1]
-        output_model_id = f"{user_config.hf_username}/{model_name}"
+            input_model_id = input_model_id.strip()
+            model_name = input_model_id.split("/")[-1]
+            output_model_id = f"{user_config.hf_username}/{model_name}"
 
-        if not same_repo:
-            output_model_id += "-onnx-genai"
-        if not same_repo and converter.api.repo_exists(output_model_id):
-            yield gr.update(interactive=True), "This model has already been converted! 🎉"
-            if user_config.ignore_converted:
-                yield gr.update(interactive=True), "Ignore it, continue..."
-            else:
+            if not same_repo:
+                output_model_id += "-onnx-genai"
+            if not same_repo and converter.api.repo_exists(output_model_id):
+                yield gr.update(interactive=True), "This model has already been converted! 🎉"
+                if user_config.ignore_converted:
+                    yield gr.update(interactive=True), "Ignore it, continue..."
+                else:
+                    return
+
+            # update markdown
+            for task in converter.list_tasks():
+                yield gr.update(interactive=False), holder.add(task).markdown()
+
+            # update log
+            logger = user_config.logger
+            logger_path = user_config.logger_path
+            logger.info(f"Log file: {logger_path}")
+            yield gr.update(interactive=False), \
+                holder.add(f"# 📄 Log file [{user_config.id}](./gradio_api/file={logger_path})").markdown()
+
+            # update counter
+            with suppress(Exception):
+                requests.get("https://counterapi.com/api/xiaoyao9184.github.com/view/convert-to-genai")
+
+            # update markdown
+            logger.info("Conversion started...")
+            gen = converter.convert_model(
+                input_model_id, output_model_id, lambda n=-1: progress.update(n)
+            )
+            try:
+                while True:
+                    msg = next(gen)
+                    yield gr.update(interactive=False), holder.add(msg).markdown()
+            except StopIteration as e:
+                output_dir = e.value
+                yield gr.update(interactive=True), \
+                    holder.add(f"🔁 Conversion successful✅! 📁 output to {output_dir}").markdown()
+            except Exception as e:
+                logger.exception(e)
+                yield gr.update(interactive=True), holder.add("🔁 Conversion failed🚫").markdown()
                 return
 
-        # update markdown
-        for task in converter.list_tasks():
-            yield gr.update(interactive=False), holder.add(task).markdown()
-
-        # update log
-        logger = user_config.logger
-        logger_path = user_config.logger_path
-        logger.info(f"Log file: {logger_path}")
-        yield gr.update(interactive=False), \
-            holder.add(f"# 📄 Log file [{user_config.id}](./gradio_api/file={logger_path})").markdown()
-
-        # update counter
-        with suppress(Exception):
-            requests.get("https://counterapi.com/api/xiaoyao9184.github.com/view/convert-to-genai")
-
-        # update markdown
-        logger.info("Conversion started...")
-        gen = converter.convert_model(
-            input_model_id, output_model_id, lambda n=-1: progress.update(n)
-        )
-        try:
-            while True:
-                msg = next(gen)
-                yield gr.update(interactive=False), holder.add(msg).markdown()
-        except StopIteration as e:
-            output_dir = e.value
-            yield gr.update(interactive=True), \
-                holder.add(f"🔁 Conversion successful✅! 📁 output to {output_dir}").markdown()
+            # update markdown
+            logger.info("Upload started...")
+            gen = converter.upload_model(input_model_id, output_model_id, lambda n=-1: progress.update(n))
+            try:
+                while True:
+                    msg = next(gen)
+                    yield gr.update(interactive=False), holder.add(msg).markdown()
+            except StopIteration as e:
+                output_model_url = f"{user_config.hf_base_url}/{output_model_id}"
+                yield gr.update(interactive=True), \
+                    holder.add(f"📤 Upload successful✅! 📦 Go to [{output_model_id}]({output_model_url}/tree/main)").markdown()
+            except Exception as e:
+                logger.exception(e)
+                yield gr.update(interactive=True), holder.add("📤 Upload failed🚫").markdown()
+                return
         except Exception as e:
-            logger.exception(e)
-            yield gr.update(interactive=True), holder.add("🔁 Conversion failed🚫").markdown()
-            return
-
-        # update markdown
-        logger.info("Upload started...")
-        gen = converter.upload_model(input_model_id, output_model_id, lambda n=-1: progress.update(n))
-        try:
-            while True:
-                msg = next(gen)
-                yield gr.update(interactive=False), holder.add(msg).markdown()
-        except StopIteration as e:
-            output_model_url = f"{user_config.hf_base_url}/{output_model_id}"
-            yield gr.update(interactive=True), \
-                holder.add(f"📤 Upload successful✅! 📦 Go to [{output_model_id}]({output_model_url}/tree/main)").markdown()
-        except Exception as e:
-            logger.exception(e)
-            yield gr.update(interactive=True), holder.add("📤 Upload failed🚫").markdown()
+            root_logger.exception(e)
+            yield gr.update(interactive=True), holder.add(str(e)).markdown()
             return
     gr_proceed.click(
         fn=click_proceed,
@@ -582,32 +628,4 @@ with gr.Blocks() as demo:
     )
 
 if __name__ == "__main__":
-    # redirect builtins.print to context progress logger
-    def context_aware_print(*args, **kwargs):
-        progress_logger = progress_logger_ctx.get(None)
-        if progress_logger:
-            progress_logger.print(*args, **kwargs)
-        else:
-            builtins._original_print(*args, **kwargs)
-    builtins._original_print = builtins.print
-    builtins.print = context_aware_print
-
-    # redirect sys.stdout.write to context progress logger
-    def context_aware_write(text):
-        progress_logger = progress_logger_ctx.get(None)
-        if progress_logger:
-            progress_logger.write(text.rstrip(), sys.stdout._original_write)
-        else:
-            sys.stdout._original_write(text)
-    sys.stdout._original_write = sys.stdout.write
-    sys.stdout.write = context_aware_write
-
-    # redirect logger to context progress logger
-    handler = RedirectHandler(progress_logger_ctx)
-    for logger in [logging.getLogger("onnxruntime"), logging.getLogger("huggingface_hub.hf_api")]:
-        logger.handlers.clear()
-        logger.addHandler(handler)
-        logger.setLevel(logger.level)
-        logger.propagate = False
-
     demo.launch(server_name="0.0.0.0", allowed_paths=[os.path.realpath(config.log_path.parent)])
