@@ -13,10 +13,10 @@
             ],
             "env": {
                 "SPACE_AUTHOR_NAME": "xiaoyao9184",
-                "LD_LIBRARY_PATH": "$CONDA_PREFIX/lib:$LD_LIBRARY_PATH",
-                "LD_PRELOAD": "$CONDA_PREFIX/lib/libstdc++.so.6",
-                "HUGGINGFACE_HUB_CACHE": "$HOME/.cache/huggingface/hub",
-                "OUTPUT_DIR": "$HOME/.genai-build/models/",
+                // "LD_LIBRARY_PATH": "${env:CONDA_ROOT}/lib:${env:LD_LIBRARY_PATH}",
+                // "LD_PRELOAD": "${env:CONDA_ROOT}/lib/libstdc++.so.6",
+                "HUGGINGFACE_HUB_CACHE": "${env:HOME}/.cache/huggingface/hub",
+                "OUTPUT_DIR": "${env:HOME}/.genai-build/models/",
                 "IGNORE_CONVERTED": "true"
             },
             "justMyCode": false
@@ -32,7 +32,7 @@
                 "-o", "${workspaceFolder}/models/Qwen2.5-0.5B-Instruct/cpu_and_mobile/cpu-int4-rtn-block-32",
                 "-p", "int4",
                 "-e", "cpu",
-                "-c", "$HOME/.cache/huggingface/hub",
+                "-c", "${env:HOME}/.cache/huggingface/hub",
                 "--extra_options", "hf_token=false", "filename=Qwen2.5-0.5B-Instruct-cpu-int4-rtn-block-32.onnx",
                     "int4_algo_config=rtn", "int4_block_size=32", "int4_block_size=32"
             ],
