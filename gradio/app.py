@@ -526,6 +526,22 @@ with gr.Blocks() as demo:
     gr_same_repo = gr.Checkbox(label="Upload to same repo (if you own it)", visible=False, info="Do you want to upload the ONNX weights to the same repository?")
     gr_proceed = gr.Button("Convert and Upload", interactive=False)
     gr_result = gr.Markdown("")
+    
+    gr.Markdown("""
+    > ⚠️ Note:
+    > Hugging Face Spaces free-tier users only have `18GB` of available memory,
+    > which is insufficient for converting, quantizing, and running most 1B-scale models.
+    >
+    > You’ll need
+    > [🐱 Github](https://github.com/xiaoyao9184/convert-to-genai)
+    > [🐋 Docker](https://hub.docker.com/r/xiaoyao9184/convert-to-genai)
+    > to self-host this project and allocate sufficient memory based on the size of your model.
+    | Model | Memory | Converted | 
+    | --- | --- | --- |
+    | [Qwen/Qwen2.5-0.5B-Instruct](https://huggingface.co/xiaoyao9184/Qwen2.5-0.5B-Instruct-onnx-genai) | < 18G | YES |
+    | Qwen/Qwen2.5-1.5B-Instruct | 22-24G | NO |
+    | google/gemma-3-1b-it | 18-20G | NO |
+    """)
 
     gr_input_model_id.change(
         fn=lambda x: [gr.update(visible=x != ""), gr.update(interactive=x != "")],
