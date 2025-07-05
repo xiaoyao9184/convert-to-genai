@@ -1,0 +1,56 @@
+ARG GENAI_VERSION=0.8.2
+
+
+FROM python:3.12-slim-bookworm AS builder
+
+ARG GENAI_VERSION
+
+RUN apt-get update \
+    && apt-get install -y \
+        git \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --upgrade pip \
+    requests \
+    cmake
+
+WORKDIR /app
+
+COPY ./onnxruntime-genai.build.sh /app/onnxruntime-genai.build.sh
+RUN bash /app/onnxruntime-genai.build.sh --version ${GENAI_VERSION}
+
+
+FROM python:3.12-slim-bookworm
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    libstdc++6 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --upgrade pip
+
+COPY --from=builder /app/.genai/build/Linux/Release/wheel/*.whl /app/
+
+RUN pip3 install --no-cache-dir \
+    onnxruntime-genai || pip3 install /app/onnxruntime_genai-*.whl
+
+COPY ./docker/build.python@cpu/requirements.txt /workspace/gradio/requirements.txt
+RUN pip3 install --no-cache-dir \
+    -r /workspace/gradio/requirements.txt
+
+COPY ./gradio /workspace/gradio
+WORKDIR /workspace/gradio
+
+
+EXPOSE 7860
+
+VOLUME /root/.cache
+VOLUME /root/.genai-build
+
+ENV HUGGINGFACE_HUB_CACHE=/root/.cache/huggingface/hub
+ENV OUTPUT_DIR=/root/.genai-build/models/
+ENV LOG_DIR=/root/.genai-build/logs/
+
+CMD ["gradio", "app.py"]

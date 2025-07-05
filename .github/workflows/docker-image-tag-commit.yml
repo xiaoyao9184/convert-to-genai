@@ -5,9 +5,11 @@ on:
   push:
     branches:
       - 'main'
+      - 'feature/arm64'
     paths:
       - gradio/**
-      - docker/build@source/dockerfile
+      - docker/build.python@cpu/dockerfile
+      - docker/build.pytorch@cuda/dockerfile
       - .github/workflows/docker-image-tag-commit.yml
 
 jobs:
@@ -16,11 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: write
-
-    strategy:
-      matrix:
-        platforms:
-          - linux/amd64
 
     steps:
       # Fix github action 'No space left on device'
@@ -51,33 +48,57 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set env git short head
-        working-directory: .
-        run: echo "COMMIT_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: Get git short head
+        uses: benjlevesque/short-sha@v3.0
+        id: short-sha
+        with:
+          length: 7
 
-      - name: Meta data image
-        id: meta
+      - name: Meta data image(cpu)
+        id: meta-cpu
         uses: docker/metadata-action@v5
         with:
           images: |
             ${{ secrets.DOCKERHUB_USERNAME }}/convert-to-genai
             ghcr.io/${{ github.repository_owner }}/convert-to-genai
           tags: |
-            type=raw,value=${{ matrix.BRANCH_CHECKOUT }}
-            type=raw,value=${{ env.COMMIT_SHORT }}
+            type=raw,value=cpu-${{ github.ref_name }}
+            type=raw,value=cpu-${{ steps.short-sha.outputs.sha }}
           flavor: |
             latest=false
+          bake-target: cpu
+
+      - name: Meta data image(cuda)
+        id: meta-cuda
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/convert-to-genai
+            ghcr.io/${{ github.repository_owner }}/convert-to-genai
+          tags: |
+            type=raw,value=cuda-${{ github.ref_name }}
+            type=raw,value=cuda-${{ steps.short-sha.outputs.sha }}
+          flavor: |
+            latest=false
+          bake-target: cuda
 
       - name: Build push image
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/bake-action@v6
         with:
-          context: .
-          file: ./docker/build@source/dockerfile
-          platforms: ${{ matrix.platforms }}
+          source: .
+          files: |
+            ./docker/docker-bake.hcl
+            cwd://${{ steps.meta-cpu.outputs.bake-file-tags }}
+            cwd://${{ steps.meta-cpu.outputs.bake-file-labels }}
+            cwd://${{ steps.meta-cpu.outputs.bake-file-annotations }}
+            cwd://${{ steps.meta-cuda.outputs.bake-file-tags }}
+            cwd://${{ steps.meta-cuda.outputs.bake-file-labels }}
+            cwd://${{ steps.meta-cuda.outputs.bake-file-annotations }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
 
-      - name: Print image digest
-        run: echo ${{ steps.build.outputs.digest }}
+      - name: Print bake metadata
+        run: echo "${{ steps.build.outputs.metadata }}"
