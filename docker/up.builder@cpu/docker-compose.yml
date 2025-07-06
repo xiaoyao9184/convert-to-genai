@@ -2,7 +2,7 @@
 
 services:
   convert-to-genai-builder:
-    image: xiaoyao9184/convert-to-genai:main
+    image: xiaoyao9184/convert-to-genai:cpu-main
     command:
       - python3
       - -m
