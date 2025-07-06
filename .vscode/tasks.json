@@ -18,9 +18,33 @@
             "command": "docker compose -p convert-to-genai up"
         },
         {
-            "label": "docker: build main",
+            "label": "docker: buildx bake build",
             "type": "shell",
-            "command": "docker build -t xiaoyao9184/convert-to-genai:main -f ./docker/build@source/dockerfile ."
+            "command": [
+                "docker buildx bake",
+                "--progress=plain",
+                "--builder convert-to-genai",
+                "-f ./docker/docker-bake.hcl",
+                "&&",
+                "docker buildx bake",
+                "--progress=plain",
+                "--builder convert-to-genai",
+                "-f ./docker/docker-bake.hcl",
+                "--set cpu.platform=''",
+                "--load",
+            ]
+        },
+        {
+            "label": "docker: buildx builder recreate",
+            "type": "shell",
+            "command": [
+                "docker buildx rm convert-to-genai || true",
+                "&& docker buildx create",
+                "--name convert-to-genai",
+                "--driver docker-container",
+                "--driver-opt memory=16g",
+                "--buildkitd-config ./docker/buildkitd.toml"
+            ]
         },
         {
             "label": "huggingface-cli: download qwen models",
