@@ -1,0 +1,110 @@
+[workspace]
+channels = ["conda-forge","nvidia"]
+name = "convert-to-genai"
+platforms = ["linux-aarch64","linux-64"]
+version = "0.1.0"
+
+[dependencies]
+python = "3.12.*"
+# fix neural-compressor dependency
+numpy = "2.2.6"
+
+[pypi-dependencies]
+transformers = ">=4.52.4, <5"
+onnx = ">=1.18.0, <2"
+onnxruntime = ">=1.22.0, <2"
+gradio = ">=5.34.2, <6"
+# need for cpu-int4-rtn-block-32
+neural-compressor = ">=2.4.1, <3"
+# need by transformers
+tokenizers = ">=0.21.2, <0.22"
+
+[target.linux-64.pypi-dependencies]
+onnxruntime-genai = "==0.8.2"
+
+# not work
+# [target.linux-aarch64.pypi-dependencies]
+# onnxruntime-genai = { url = "https://github.com/microsoft/onnxruntime-genai/archive/refs/tags/v0.8.2.zip" }
+
+
+[feature.cpu]
+# platforms = ["linux-64","linux-aarch64"]
+
+[feature.cpu.dependencies]
+pytorch-cpu = "*"
+cmake = ">=4.0.3,<5"
+
+
+[feature.cuda]
+platforms = ["linux-64"]
+
+[feature.cuda.system-requirements]
+cuda = "12.0"
+
+[feature.cuda.dependencies]
+cuda-version = "12.6.*"
+pytorch-gpu = "*"
+
+
+[feature.build]
+# platforms = ["linux-64","linux-aarch64"]
+
+[feature.build.dependencies]
+bash = "*"
+git = ">=2.49.0,<3"
+sed = ">=4.9,<5"
+findutils = ">=4.10.0,<5"
+make = ">=4.4.1,<5"
+cmake = ">=4.0.3,<5"
+gcc = ">=15.1.0,<15.2"
+gxx = ">=15.1.0,<15.2"
+binutils = ">=2.43,<3"
+pip = "*"
+
+[feature.build.target.linux-64.dependencies]
+sysroot_linux-64 = "==2.34"
+
+[feature.build.target.linux-aarch64.dependencies]
+sysroot_linux-aarch64 = ">=2.27"
+
+[feature.build.tasks.build]
+args = [
+  { "arg" = "version", "default" = "0.8.2" }
+]
+cmd = [
+    "bash", "-x",
+    "./onnxruntime-genai.build.sh",
+    "--version", "{{ version }}",
+    "--retries", "1",
+    # mirrors
+    # "--sed", "'s|;https://github.com|;https://gh-proxy.com/https://github.com|'",
+    # "--sed", 's|URL[[:space:]]*https://github.com|URL https://gh-proxy.com/https:/github.com|',
+    # "--sed", 's|URL[[:space:]]*https://codeload.github.com/nlohmann/json/zip/refs/tags/v3.11.3|URL https://gh-proxy.com/https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.zip|'
+]
+outputs = ["./.genai/build/Linux/Release/wheel/*.whl"]
+clean-env = true
+
+
+[environments]
+cuda = ["cuda"]
+cpu = ["cpu"]
+build = ["build"]
+default = ["cpu", "build"]
+
+
+[tasks.install]
+# depends-on = [
+#   { task = "build", environment = "build" },
+# ]
+cmd = [
+  "bash", "-c",
+  '''
+    if [ "$(uname -m)" = "aarch64" ]; then
+      echo "Building for aarch64"
+      pixi run -e build build
+
+      echo "Installing for aarch64"
+      pip install .genai/build/Linux/Release/wheel/*.whl
+    fi
+  '''
+]

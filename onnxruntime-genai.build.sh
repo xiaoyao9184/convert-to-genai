@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 VERSION=""
 SED_ARGS=()
@@ -27,6 +28,7 @@ done
 
 
 SRC_DIR=".genai"
+export GIT_SSL_NO_VERIFY=true
 if [[ ! -d "$SRC_DIR" ]]; then
     git clone https://github.com/microsoft/onnxruntime-genai.git "$SRC_DIR"
 fi
@@ -45,14 +47,16 @@ done
 count=0
 
 while [ $count -lt $MAX_RETRIES ]; do
+    set +e
     echo "Attempt $((count+1))..."
     python build.py --config Release
     if [ $? -eq 0 ]; then
         echo "Build succeeded."
         exit 0
     fi
+    set -e
     count=$((count+1))
-    echo "Build failed. Retry with `MAKEFLAGS=-j1` and sed `build/Linux/Release/_deps` replacements: ${SED_ARGS[@]}"
+    echo "Build failed. Retry with 'MAKEFLAGS=-j1' and sed 'build/Linux/Release/_deps' replacements: ${SED_ARGS[@]}"
 
     export MAKEFLAGS=-j1
     for sed_expr in "${SED_ARGS[@]}"; do

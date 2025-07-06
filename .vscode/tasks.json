@@ -62,10 +62,16 @@
             ]
         },
         {
-            "label": "conda: create env",
+            "label": "pixi: install",
             "type": "shell",
+            "options": {
+                "env": {
+                    "CONDA_NO_IPV6": "1"
+                }
+            },
             "command": [
-                "conda env create -f ./environment.yml"
+                "pixi lock",
+                "&& pixi run install"
             ]
         }
     ]
