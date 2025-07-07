@@ -4,3 +4,9 @@ logs/
 test/
 # pixi environments
 .pixi
+# pixi lock for prevent mirror URL leakage
+pixi.lock
+# onnxruntime-genai source
+.genai
+# docker buildx cache
+.buildx-cache/
