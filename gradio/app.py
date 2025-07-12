@@ -365,9 +365,12 @@ class ModelConverter:
                                 yield f"🆘 `{task_name}` Upload Error: {e}"
                             else:
                                 raise e
-            return hf_model_url
-        finally:
             shutil.rmtree(model_folder_path, ignore_errors=True)
+            return hf_model_url
+        except Exception as e:
+            if 'SPACE_ID' in os.environ:
+                shutil.rmtree(model_folder_path, ignore_errors=True)
+            raise
 
     def generate_readme(self, imi: str):
         return (
