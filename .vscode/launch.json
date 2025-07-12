@@ -12,9 +12,9 @@
                 "${workspaceFolder}/gradio/app.py"
             ],
             "env": {
+                // "HF_ENDPOINT": "https://huggingface.co",
+                "HF_TOKEN": "${env:HF_TOKEN}",
                 "SPACE_AUTHOR_NAME": "xiaoyao9184",
-                // "LD_LIBRARY_PATH": "${env:CONDA_ROOT}/lib:${env:LD_LIBRARY_PATH}",
-                // "LD_PRELOAD": "${env:CONDA_ROOT}/lib/libstdc++.so.6",
                 "HUGGINGFACE_HUB_CACHE": "${env:HOME}/.cache/huggingface/hub",
                 "OUTPUT_DIR": "${env:HOME}/.genai-build/models/",
                 "IGNORE_CONVERTED": "true",
@@ -30,7 +30,7 @@
             "console": "integratedTerminal",
             "args": [
                 "-m", "Qwen/Qwen2.5-0.5B-Instruct",
-                "-o", "${workspaceFolder}/models/Qwen2.5-0.5B-Instruct/cpu_and_mobile/cpu-int4-rtn-block-32",
+                "-o", "$HOME/.genai-build/models/convert-to-genai/Qwen2.5-0.5B-Instruct/cpu_and_mobile/cpu-int4-rtn-block-32",
                 "-p", "int4",
                 "-e", "cpu",
                 "-c", "${env:HOME}/.cache/huggingface/hub",

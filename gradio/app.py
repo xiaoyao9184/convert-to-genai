@@ -202,7 +202,7 @@ class ModelConverter:
 
     def __init__(self, config: Config, context: contextvars.ContextVar):
         self.config = config
-        self.api = HfApi(token=config.hf_token)
+        self.api = HfApi(token=config.hf_token or None)
         self.context = context
 
     def list_tasks(self):
@@ -263,7 +263,7 @@ class ModelConverter:
                     )
 
                     extra_options = name_extra_options_map[name]
-                    extra_options['hf_token'] = "false" if self.config.hf_token == None else self.config.hf_token
+                    extra_options['hf_token'] = self.config.hf_token or "false"
 
                     try:
                         yield {

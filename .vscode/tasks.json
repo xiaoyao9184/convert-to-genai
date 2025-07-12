@@ -5,7 +5,10 @@
             "label": "docker: compose up.builder@cpu",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/docker/up.builder@cpu/"
+                "cwd": "${workspaceFolder}/docker/up.builder@cpu/",
+                "env": {
+                    // "HF_ENDPOINT": "http://host.docker.internal:8090",
+                }
             },
             "command": "docker compose -p convert-to-genai up"
         },
@@ -13,7 +16,13 @@
             "label": "docker: compose up.gradio@cpu",
             "type": "shell",
             "options": {
-                "cwd": "${workspaceFolder}/docker/up.gradio@cpu/"
+                "cwd": "${workspaceFolder}/docker/up.gradio@cpu/",
+                "env": {
+                    // "HF_ENDPOINT": "http://host.docker.internal:8090",
+                    "SPACE_AUTHOR_NAME": "xiaoyao9184",
+                    "C2G_IGNORE_CONVERTED": "true",
+                    "C2G_IGNORE_ERRORS": "true"
+                }
             },
             "command": "docker compose -p convert-to-genai up"
         },

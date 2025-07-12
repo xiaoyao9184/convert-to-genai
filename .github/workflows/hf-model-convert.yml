@@ -1,0 +1,46 @@
+
+name: HuggingFace Model Convert
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: model id of huggingface
+        required: true
+        default: Qwen/Qwen2.5-0.5B-Instruct
+      same_repo:
+        description: output to the same repo
+        required: true
+        default: false
+
+jobs:
+  hf-model-Convert:
+    name: Convert models to HuggingFace
+    runs-on: ubuntu-latest
+
+    steps:
+      # Fix github action 'No space left on device'
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run docker compose
+        uses: hoverkraft-tech/compose-action@v2.0.1
+        with:
+          compose-file: "./docker/up.gradio@cpu/docker-compose.yml"
+        env:
+          HF_ENDPOINT: https://huggingface.co
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          SPACE_AUTHOR_NAME: ${{ secrets.HF_USERNAME }}
+          CACHE_DIR: /root/.cache
+          OUTPUT_DIR: /root/.genai-build/models
+          LOG_DIR: /root/.genai-build/logs
+          C2G_IGNORE_CONVERTED: true
+          C2G_IGNORE_ERRORS: true
+
+      - name: Click proceed
+        run: ./gradio-api.proceed.sh ${{ inputs.model_id }} ${{ inputs.same_repo }}

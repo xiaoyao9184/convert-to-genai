@@ -10,22 +10,20 @@ services:
       - -m
       - google/gemma-3-1b-it
       - -o
-      - /root/.genai-build/models/google/gemma-3-1b-it-genai
+      - /root/.genai-build/models/convert-to-genai/gemma-3-1b-it-genai
       - -p
       - int4
       - -e
       - cpu
       - -c
-      - /root/.cache
+      - /root/.cache/huggingface/hub
     environment:
-      - HF_ENDPOINT=http://host.docker.internal:8090
-      # - HF_TOKEN=
+      - HF_ENDPOINT=${HF_ENDPOINT:-https://huggingface.co}
+      # NOTE: must set a token if the model requires granted access.
+      - HF_TOKEN=${HF_TOKEN?error}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       # - ./../../cache:/root/.cache
-      # - ./../../models:/root/.genai-build/models
-      # - ./../../logs:/root/.genai-build/logs
       - $HOME/.cache:/root/.cache
       - $HOME/.genai-build/models:/root/.genai-build/models
-      - $HOME/.genai-build/logs:/root/.genai-build/logs

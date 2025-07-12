@@ -5,8 +5,14 @@ services:
     image: xiaoyao9184/convert-to-genai:cpu-main
     command: python3 /workspace/gradio/app.py
     environment:
-      - HF_ENDPOINT=http://host.docker.internal:8090
-      - SPACE_AUTHOR_NAME=xiaoyao9184
+      - HF_ENDPOINT=${HF_ENDPOINT:-https://huggingface.co}
+      - HF_TOKEN=${HF_TOKEN:-}
+      - SPACE_AUTHOR_NAME=${SPACE_AUTHOR_NAME:-}
+      - CACHE_DIR=${C2G_CACHE_DIR:-${HUGGINGFACE_HUB_CACHE:-}}
+      - OUTPUT_DIR=${C2G_OUTPUT_DIR:-}
+      - LOG_DIR=${C2G_LOG_DIR:-}
+      - IGNORE_CONVERTED=${C2G_IGNORE_CONVERTED:-}
+      - IGNORE_ERRORS=${C2G_IGNORE_ERRORS:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
