@@ -1,0 +1,26 @@
+{
+    "sync-rsync.useWSL": true,
+    "sync-rsync.sites": [
+        {
+            "localPath": "${workspaceFolder}/",
+            "remotePath": "ubuntu@dell-server216.lan:~/code/${workspaceFolderBasename}"
+        }
+        // {
+        //     "localPath": "${workspaceFolder}/",
+        //     "remotePath": "root@ascend-server212.lan:~/code/${workspaceFolderBasename}"
+        // }
+    ],
+    "sync-rsync.exclude": [
+        "/.buildx-cache",
+        "/.pixi",
+        "/.genai",
+        "/.vscode/settings.json",
+        "__pycache__",
+        "/models",
+        "/logs",
+        "/test"
+    ],
+    "sync-rsync.options": [
+        ["progress"]
+    ]
+}
