@@ -31,3 +31,13 @@ You can fork this project and build your own image.
 You will need to provide the following secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `HF_USERNAME`, and `HF_TOKEN`.
 
 See [docker/login-action](https://github.com/docker/login-action#docker-hub) for more details.
+
+
+## Development Dependencies
+
+When upgrading versions, please pay attention to changes in the test requirements from `onnxruntime-genai`.  
+Check the [`test/python/requirements.txt`](https://github.com/microsoft/onnxruntime-genai/blob/main/test/python/requirements.txt) file for the target version to ensure all necessary dependencies are included.
+
+For example, when upgrading from v0.8.3 to v0.9.0, the requirements file added `onnx_ir>=0.1.3`:
+- [v0.8.3 requirements](https://github.com/microsoft/onnxruntime-genai/blob/v0.8.3/test/python/requirements.txt)
+- [v0.9.0 requirements](https://github.com/microsoft/onnxruntime-genai/blob/v0.9.0/test/python/requirements.txt)
