@@ -1,4 +1,4 @@
-ARG GENAI_VERSION=0.9.2
+ARG GENAI_VERSION=0.10.0
 
 
 FROM python:3.12-slim-bookworm AS builder
