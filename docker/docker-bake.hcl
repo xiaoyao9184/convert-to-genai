@@ -5,7 +5,7 @@ group "default" {
 
 target "cpu" {
   args = {
-    GENAI_VERSION = "0.11.2"
+    GENAI_VERSION = "0.11.3"
   }
   cache-from = [
     {
@@ -33,7 +33,7 @@ target "cpu" {
 
 target "cuda" {
   args = {
-    GENAI_VERSION = "0.11.2"
+    GENAI_VERSION = "0.11.3"
   }
   cache-from = [
     {
